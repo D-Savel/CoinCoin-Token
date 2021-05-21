@@ -7,7 +7,7 @@ describe('CoinCoin Token', function () {
   const INITIAL_SUPPLY = ethers.utils.parseEther('8000000000')
 
   beforeEach(async function () {
-    ;[dev, owner, alice, bob, charlie, dan, eve] = await ethers.getSigners()
+    [dev, owner, alice, bob, charlie, dan, eve] = await ethers.getSigners()
     CoinCoin = await ethers.getContractFactory('CoinCoin')
     coincoin = await CoinCoin.connect(dev).deploy(owner.address, INITIAL_SUPPLY)
     await coincoin.deployed()
@@ -47,13 +47,47 @@ describe('CoinCoin Token', function () {
     })
   })
 
-  describe('Allowance system', function () {
-    // Tester le système d'allowance ici
+  describe('Approve system', function () {
+    it('Approves new spender for owner', async function () {
+      await expect(await coincoin.connect(owner).approve(alice.address, 500))
+        .to.emit(coincoin, 'Approval')
+        .withArgs(owner.address, alice.address, 500);
+    })
+    it('should amount allowance is right', async function () {
+      await coincoin.connect(owner).approve(charlie.address, 500);
+      expect(await coincoin.allowance(owner.address, charlie.address)).to.equal(500)
+    })
+    it("Should approve function revert for address zero spender", async function () {
+      await expect(coincoin.connect(owner).approve(ethers.constants.AddressZero, 500)).to.be.revertedWith('CoinCoin: approve to the zero address');
+    });
   })
-  describe('Token transfers', function () {
-    it('transfers tokens from sender to receipient', async function () {})
-    it('transferFrom tokens from sender to receipient', async function () {})
-    it('emits event Transfer when transfer token', async function () {})
-    it('emits event Transfer when transferFrom token', async function () {})
+
+  describe('Token transfers', async function () {
+
+    it('transfers tokens from sender to recipient', async function () {
+      const initialBobBalances = await coincoin.balanceOf(bob.address)
+      await coincoin.connect(owner).transfer(bob.address, 1000)
+      expect(await coincoin.balanceOf(bob.address)).to.equal(initialBobBalances + 1000);
+    })
+    it("Should transfer function revert for not enough funds to transfer", async function () {
+      const overedBobBalances = await coincoin.balanceOf(bob.address) + 10
+      await coincoin.connect(bob)
+      await expect(coincoin.transfer(eve.address, overedBobBalances)).to.be.revertedWith('CoinCoin: Not enough Ether to transfer');
+    });
+
+    /*it('transferFrom tokens from sender to recipient', async function () {
+      
+    })
+    */
+    it('emits event Transfer when transfer token', async function () {
+      await expect(coincoin.connect(owner).transfer(alice.address, 1000))
+        .to.emit(coincoin, 'Transfer')
+        .withArgs(owner.address, alice.address, 1000);
+    })
+
+    /*it('emits event Transfer when transferFrom token', async function () {
+      
+    })
+    */
   })
 })
